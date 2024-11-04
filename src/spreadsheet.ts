@@ -17,7 +17,7 @@ import "@univerjs/design/lib/index.css";
 import "@univerjs/ui/lib/index.css";
 import "@univerjs/docs-ui/lib/index.css";
 import "@univerjs/sheets-ui/lib/index.css";
-import "@univerjs/sheets-formula/lib/index.css";
+import "@univerjs/sheets-formula-ui/lib/index.css";
 
 const univer_core = import("@univerjs/core").then(
 	({ Univer, LocaleType, Tools }) => ({ Univer, LocaleType, Tools }),
@@ -56,6 +56,9 @@ const sheets_numfmt = import("@univerjs/sheets-numfmt").then(
 const sheets_formula = import("@univerjs/sheets-formula").then(
 	({ UniverSheetsFormulaPlugin }) => UniverSheetsFormulaPlugin,
 );
+const sheets_formula_ui = import("@univerjs/sheets-formula-ui").then(
+	({ UniverSheetsFormulaUIPlugin }) => UniverSheetsFormulaUIPlugin,
+);
 const facade = import("@univerjs/facade").then(({ FUniver }) => ({ FUniver }));
 const zod = import("zod");
 const docs_plugin = import("@univerjs/docs").then(
@@ -75,7 +78,7 @@ const SheetsUIEnUS = import(
 	"node_modules/@univerjs/sheets-ui/lib/locale/en-US.json"
 );
 const SheetsFormulaEnUS = import(
-	"node_modules/@univerjs/sheets-formula/lib/locale/en-US.json"
+	"node_modules/@univerjs/sheets-formula-ui/lib/locale/en-US.json"
 );
 const UIEnUS = import("node_modules/@univerjs/ui/lib/locale/en-US.json");
 const DocsUIEnUS = import(
@@ -163,6 +166,7 @@ async function setupUniver(container: HTMLElement) {
 	univer.registerPlugin(await engine_formula);
 	univer.registerPlugin(await sheets_numfmt);
 	univer.registerPlugin(await sheets_formula);
+	univer.registerPlugin(await sheets_formula_ui);
 
 	return univer;
 }
@@ -272,7 +276,7 @@ async function renderSpreadsheet(
 	const { update_link } = props;
 	univerAPI.onCommandExecuted(({ id, params }) => {
 		// To debug:
-		console.log(id, params);
+		// console.log(id, params);
 		if (update_link && id === SetRangeValuesMutation.id) {
 			handleSetRangeValues(
 				params as ISetRangeValuesMutationParams,

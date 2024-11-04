@@ -86,7 +86,7 @@ It is included everywhere using the [`dynamic`](https://sql.ophir.dev/documentat
 
 ## Running the example
 
-To run the example, simply [download the latest SQLPage release](https://github.com/lovasoa/SQLpage/releases) and run it from the root folder of the example.
+To run the example, simply [download the latest SQLPage release](https://github.com/sqlpage/SQLpage/releases) and run it from the root folder of the example.
 
 ## SQLPage features used
 

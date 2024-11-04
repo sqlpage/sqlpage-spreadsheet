@@ -49,7 +49,7 @@ jobs:
           npx parcel build --public-url /dist/
           ./add_csp_nonce.sh
           cp dist/spreadsheet_component.html spreadsheet.dist.handlebars
-          npx parcel build --public-url https://lovasoa.github.io/sqlpage-spreadsheet/${{ steps.get_version.outputs.VERSION }}/dist/
+          npx parcel build --public-url https://sqlpage.github.io/sqlpage-spreadsheet/${{ steps.get_version.outputs.VERSION }}/dist/
           ./add_csp_nonce.sh
           cp dist/spreadsheet_component.html spreadsheet.handlebars
 
