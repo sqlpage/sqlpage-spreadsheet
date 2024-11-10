@@ -9,6 +9,17 @@
 The spreadsheet component generates an online editable spreadsheet similar to Google Sheets or Excel, the contents of which are loaded from the results of your SQL query.  
 It has the ability to edit cell data by posting their contents to another SQLpage.
 
+## Example
+
+Use it with
+
+```sql
+select 'spreadsheet' as component;
+
+select 1 as x, id as y, my_column as value
+from my_table;
+```
+
 ## Screenshot
 
 ![screenshot](docs/screenshot.png)
