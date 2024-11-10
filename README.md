@@ -1,4 +1,4 @@
-# Spreadsheet component
+# [SQLPage](https://sql.datapage.app) Spreadsheet component
 
 > [!WARNING]
 > **Important legal notice** This component is not distributed under the same permissive MIT license as the rest of SQLpage, but rather under the [GNU AGPL v3 license](./LICENSE).
