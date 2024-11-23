@@ -5,6 +5,7 @@ import {
 	type ICellData,
 	type IObjectMatrixPrimitiveType,
 	type IStyleData,
+	type IWorkbookData,
 	type IWorksheetData,
 	TextDirection,
 	VerticalAlign,
@@ -80,12 +81,13 @@ async function buildCellData(dataArray: any[]) {
 async function setupUniver(container: HTMLElement) {
 	const { LocaleType, createUniver, defaultTheme } = await univerPresets;
 	const { UniverSheetsCorePreset } = await univerPresetsSheets;
-	const { default: UniverPresetSheetsCoreEnUS } = await univerPresetsSheetsLocale;
+	const { default: UniverPresetSheetsCoreEnUS } =
+		await univerPresetsSheetsLocale;
 
 	const { univerAPI } = createUniver({
 		locale: LocaleType.EN_US,
 		locales: {
-			[LocaleType.EN_US]: UniverPresetSheetsCoreEnUS
+			[LocaleType.EN_US]: UniverPresetSheetsCoreEnUS,
 		},
 		logLevel: DEBUG ? 3 : 0,
 		theme: defaultTheme,
@@ -188,14 +190,17 @@ async function renderSpreadsheet(
 
 	const univerAPI = await setupUniver(container);
 
-	univerAPI.createUniverSheet({
+	const sheet: Partial<IWorkbookData> = {
 		sheetOrder: ["sqlpage"],
 		name: "sqlpage",
 		appVersion: "0.2.14",
 		sheets: {
 			sqlpage: worksheet,
 		},
-	});
+	};
+	if (DEBUG) console.log("sqlpage-spreadsheet: creating sheet", sheet);
+
+	univerAPI.createUniverSheet(sheet);
 
 	const { update_link } = props;
 	univerAPI.onCommandExecuted(({ id, params }) => {
@@ -224,7 +229,6 @@ function handleSetRangeValues(
 		for (const col in cols) {
 			const cell = cols[col];
 			if (!cell) continue;
-			console.log(cell);
 			let value = cell.v as CellValue | null | undefined;
 			if (value == null && cell.p) {
 				value = cell.p.body?.dataStream?.trimEnd();
