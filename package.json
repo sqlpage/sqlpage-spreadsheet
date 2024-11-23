@@ -1,6 +1,6 @@
 {
 	"name": "sqlpage_spreadsheet",
-	"version": "0.4.1",
+	"version": "0.5.0",
 	"description": "sqlpage spreadsheet component",
 	"source": "./src/spreadsheet_component.html",
 	"browserslist": "> 3%, last 2 versions, not dead",
@@ -24,21 +24,13 @@
 		"typescript": "^5.6.2"
 	},
 	"dependencies": {
-		"@univerjs/core": "^0.4.2",
-		"@univerjs/design": "^0.4.2",
-		"@univerjs/docs": "^0.4.2",
-		"@univerjs/docs-ui": "^0.4.2",
-		"@univerjs/engine-formula": "^0.4.2",
-		"@univerjs/engine-render": "^0.4.2",
-		"@univerjs/facade": "^0.4.2",
-		"@univerjs/sheets": "^0.4.2",
-		"@univerjs/sheets-formula": "^0.4.2",
-		"@univerjs/sheets-formula-ui": "^0.4.2",
-		"@univerjs/sheets-ui": "^0.4.2",
-		"@univerjs/ui": "^0.4.2",
+		"@univerjs/presets": "^0.5.0",
 		"zod": "^3.23.8"
 	},
 	"@parcel/bundler-default": {
 		"minBundleSize": 60000
+	},
+	"@parcel/resolver-default": {
+		"packageExports": true
 	}
 }

@@ -7,11 +7,13 @@ import {
 	type IStyleData,
 	type IWorksheetData,
 	TextDirection,
-	type UniverInstanceType,
 	VerticalAlign,
 	WrapStrategy,
 } from "@univerjs/core";
-import type { ISetRangeValuesMutationParams } from "@univerjs/sheets";
+import {
+	type ISetRangeValuesMutationParams,
+	SetRangeValuesMutation,
+} from "@univerjs/sheets";
 
 import "@univerjs/design/lib/index.css";
 import "@univerjs/ui/lib/index.css";
@@ -19,75 +21,15 @@ import "@univerjs/docs-ui/lib/index.css";
 import "@univerjs/sheets-ui/lib/index.css";
 import "@univerjs/sheets-formula-ui/lib/index.css";
 
-const univer_core = import("@univerjs/core").then(
-	({ Univer, LocaleType, Tools }) => ({ Univer, LocaleType, Tools }),
+const univerPresets = import("@univerjs/presets");
+const univerPresetsSheets = import("@univerjs/presets/preset-sheets-core");
+const univerPresetsSheetsLocale = import(
+	"@univerjs/presets/preset-sheets-core/locales/en-US"
 );
-const design = import("@univerjs/design").then(({ defaultTheme }) => ({
-	defaultTheme,
-}));
-const render_engine = import("@univerjs/engine-render").then(
-	({ UniverRenderEnginePlugin }) => UniverRenderEnginePlugin,
-);
-const ui_plugin = import("@univerjs/ui").then(
-	({ UniverUIPlugin }) => UniverUIPlugin,
-);
-const univer_sheets = import("@univerjs/sheets").then(
-	({
-		UniverSheetsPlugin,
-		SetRangeValuesMutation,
-		SetFrozenCommand,
-		SetSelectionsOperation,
-	}) => ({
-		UniverSheetsPlugin,
-		SetRangeValuesMutation,
-		SetFrozenCommand,
-		SetSelectionsOperation,
-	}),
-);
-const sheets_ui_plugin = import("@univerjs/sheets-ui").then(
-	({ UniverSheetsUIPlugin }) => UniverSheetsUIPlugin,
-);
-const engine_formula = import("@univerjs/engine-formula").then(
-	({ UniverFormulaEnginePlugin }) => UniverFormulaEnginePlugin,
-);
-const sheets_numfmt = import("@univerjs/sheets-numfmt").then(
-	({ UniverSheetsNumfmtPlugin }) => UniverSheetsNumfmtPlugin,
-);
-const sheets_formula = import("@univerjs/sheets-formula").then(
-	({ UniverSheetsFormulaPlugin }) => UniverSheetsFormulaPlugin,
-);
-const sheets_formula_ui = import("@univerjs/sheets-formula-ui").then(
-	({ UniverSheetsFormulaUIPlugin }) => UniverSheetsFormulaUIPlugin,
-);
-const facade = import("@univerjs/facade").then(({ FUniver }) => ({ FUniver }));
 const zod = import("zod");
-const docs_plugin = import("@univerjs/docs").then(
-	({ UniverDocsPlugin }) => UniverDocsPlugin,
-);
-const docs_ui_plugin = import("@univerjs/docs-ui").then(
-	({ UniverDocsUIPlugin }) => UniverDocsUIPlugin,
-);
-
-const DesignEnUS = import(
-	"node_modules/@univerjs/design/lib/locale/en-US.json"
-);
-const SheetsEnUS = import(
-	"node_modules/@univerjs/sheets/lib/locale/en-US.json"
-);
-const SheetsUIEnUS = import(
-	"node_modules/@univerjs/sheets-ui/lib/locale/en-US.json"
-);
-const SheetsFormulaEnUS = import(
-	"node_modules/@univerjs/sheets-formula-ui/lib/locale/en-US.json"
-);
-const UIEnUS = import("node_modules/@univerjs/ui/lib/locale/en-US.json");
-const DocsUIEnUS = import(
-	"node_modules/@univerjs/docs-ui/lib/locale/en-US.json"
-);
 
 const NUMBER_CELL_TYPE: typeof CellValueType.NUMBER = 2;
-const UNIVER_SHEET_TYPE: typeof UniverInstanceType.UNIVER_SHEET = 2;
-
+const DEBUG = window?.location?.search?.includes("_debug_spreadsheet");
 async function generateWorkSheet(
 	dataArray: any[],
 	props: Props,
@@ -136,39 +78,26 @@ async function buildCellData(dataArray: any[]) {
 }
 
 async function setupUniver(container: HTMLElement) {
-	const { Univer, LocaleType, Tools } = await univer_core;
-	const { defaultTheme } = await design;
+	const { LocaleType, createUniver, defaultTheme } = await univerPresets;
+	const { UniverSheetsCorePreset } = await univerPresetsSheets;
+	const { default: UniverPresetSheetsCoreEnUS } = await univerPresetsSheetsLocale;
 
-	const univer = new Univer({
-		theme: defaultTheme,
-		logLevel: 3,
+	const { univerAPI } = createUniver({
 		locale: LocaleType.EN_US,
 		locales: {
-			[LocaleType.EN_US]: Tools.deepMerge(
-				await DesignEnUS,
-				await SheetsEnUS,
-				await SheetsUIEnUS,
-				await SheetsFormulaEnUS,
-				await UIEnUS,
-				await DocsUIEnUS,
-			),
+			[LocaleType.EN_US]: UniverPresetSheetsCoreEnUS
 		},
+		logLevel: DEBUG ? 3 : 0,
+		theme: defaultTheme,
+		presets: [
+			UniverSheetsCorePreset({
+				container,
+			}),
+		],
 	});
 
-	univer.registerPlugin(await render_engine);
-	const uiPlugin = await ui_plugin;
 	container.className = "sqlpage_spreadsheet";
-	univer.registerPlugin(uiPlugin, { container });
-	univer.registerPlugin((await univer_sheets).UniverSheetsPlugin);
-	univer.registerPlugin(await sheets_ui_plugin);
-	univer.registerPlugin(await docs_plugin);
-	univer.registerPlugin(await docs_ui_plugin);
-	univer.registerPlugin(await engine_formula);
-	univer.registerPlugin(await sheets_numfmt);
-	univer.registerPlugin(await sheets_formula);
-	univer.registerPlugin(await sheets_formula_ui);
-
-	return univer;
+	return univerAPI;
 }
 
 function setupErrorModal(resp_modal: HTMLElement) {
@@ -257,9 +186,9 @@ async function renderSpreadsheet(
 
 	const worksheet = await generateWorkSheet(data, props);
 
-	const univer = await setupUniver(container);
+	const univerAPI = await setupUniver(container);
 
-	univer.createUnit(UNIVER_SHEET_TYPE, {
+	univerAPI.createUniverSheet({
 		sheetOrder: ["sqlpage"],
 		name: "sqlpage",
 		appVersion: "0.2.14",
@@ -268,11 +197,6 @@ async function renderSpreadsheet(
 		},
 	});
 
-	const { FUniver } = await facade;
-
-	const univerAPI = FUniver.newAPI(univer);
-
-	const { SetRangeValuesMutation } = await univer_sheets;
 	const { update_link } = props;
 	univerAPI.onCommandExecuted(({ id, params }) => {
 		// To debug:
@@ -300,11 +224,16 @@ function handleSetRangeValues(
 		for (const col in cols) {
 			const cell = cols[col];
 			if (!cell) continue;
+			console.log(cell);
+			let value = cell.v as CellValue | null | undefined;
+			if (value == null && cell.p) {
+				value = cell.p.body?.dataStream?.trimEnd();
+			}
 			handleUpdate(
 				update_link,
 				Number.parseInt(col),
 				Number.parseInt(row),
-				cell.v as CellValue | null | undefined,
+				value,
 				cell.custom || {},
 				errorModal,
 			);

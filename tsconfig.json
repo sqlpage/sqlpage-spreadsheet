@@ -1,18 +1,15 @@
 {
 	"compilerOptions": {
 		"baseUrl": ".",
-		"paths": {
-			"@univerjs/*": ["node_modules/@univerjs/*/lib/types"]
-		},
+		"paths": {},
 		"skipLibCheck": true,
 		"noEmit": true,
 		"strict": true,
 		"esModuleInterop": true,
-		"moduleResolution": "Bundler",
-		"module": "esnext",
+		"moduleResolution": "NodeNext",
+		"module": "NodeNext",
 		"noUnusedLocals": true,
 		"noUnusedParameters": true
 	},
-	"include": ["**/*.ts"],
-	"exclude": ["node_modules"]
+	"include": ["**/*.ts"]
 }
