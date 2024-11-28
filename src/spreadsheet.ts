@@ -31,13 +31,28 @@ const zod = import("zod");
 
 const NUMBER_CELL_TYPE: typeof CellValueType.NUMBER = 2;
 const DEBUG = window?.location?.search?.includes("_debug_spreadsheet");
+
+class CellIdMap {
+	ids: string[] = [];
+	static MAX_COLS = 1000000000;
+	insert(row: number, col: number, id: string) {
+		const idx = row * CellIdMap.MAX_COLS + col;
+		this.ids[idx] = id;
+	}
+	get(row: number, col: number): string | undefined {
+		const idx = row * CellIdMap.MAX_COLS + col;
+		return this.ids[idx];
+	}
+}
+
 async function generateWorkSheet(
 	dataArray: any[],
 	props: Props,
-): Promise<Partial<IWorksheetData>> {
-	const { cellData, rowCount, columnCount } = await buildCellData(dataArray);
+): Promise<{ worksheet: Partial<IWorksheetData>; cellIdMap: CellIdMap }> {
+	const { cellData, rowCount, columnCount, cellIdMap } =
+		await buildCellData(dataArray);
 
-	return {
+	const worksheet: Partial<IWorksheetData> = {
 		id: "sqlpage",
 		name: props.sheet_name,
 		defaultColumnWidth: props.column_width,
@@ -53,10 +68,13 @@ async function generateWorkSheet(
 		columnCount,
 		cellData,
 	};
+
+	return { worksheet, cellIdMap };
 }
 
 async function buildCellData(dataArray: any[]) {
 	const cellData: IObjectMatrixPrimitiveType<ICellData> = {};
+	const cellIdMap = new CellIdMap();
 	let rowCount = 1000;
 	let columnCount = 26;
 	const schema = DataArraySchema(await zod);
@@ -64,9 +82,11 @@ async function buildCellData(dataArray: any[]) {
 	for (const elem of dataArray) {
 		const [colIdx, rowIdx, value, ...props] = schema.parse(elem);
 		const cell: ICellData = { v: value };
-		const style = props.length ? cellFromProps(props) : null;
-		cell.s = style;
-		if (style?.id) cell.custom = { id: style.id };
+		if (props.length) {
+			const { s, customId } = cellFromProps(props);
+			cell.s = s;
+			if (customId) cellIdMap.insert(rowIdx, colIdx, customId);
+		}
 		if (typeof value === "number") cell.t = NUMBER_CELL_TYPE;
 		const row = cellData[rowIdx];
 		if (row) row[colIdx] = cell;
@@ -75,7 +95,7 @@ async function buildCellData(dataArray: any[]) {
 		columnCount = Math.max(columnCount, colIdx);
 	}
 
-	return { cellData, rowCount, columnCount };
+	return { cellData, rowCount, columnCount, cellIdMap };
 }
 
 async function setupUniver(container: HTMLElement) {
@@ -117,7 +137,7 @@ async function handleUpdate(
 	x: number,
 	y: number,
 	value: CellValue | null | undefined,
-	custom: Record<string, unknown>,
+	customId: string | undefined,
 	errorModal: ReturnType<typeof setupErrorModal>,
 ) {
 	if (!update_link) return;
@@ -128,7 +148,7 @@ async function handleUpdate(
 	formData.append("x", x.toString());
 	formData.append("y", y.toString());
 	if (value != null) formData.append("value", value.toString());
-	if (typeof custom.id === "string") formData.append("id", custom.id);
+	if (customId != null) formData.append("id", customId);
 	const r = await fetch(url, { method: "POST", body: formData });
 	let resp_html = await r.text();
 	if (r.status !== 200 && !resp_html) resp_html = r.statusText;
@@ -141,7 +161,8 @@ async function handleUpdate(
 const CSS_VARS = getComputedStyle(document.documentElement);
 
 function cellFromProps(props: CellProps[]) {
-	const s: IStyleData & { id?: string } = {};
+	let customId: string | undefined = undefined;
+	const s: IStyleData = {};
 	for (let i = 0; i < props.length; i++) {
 		const n = props[i];
 		if (n === 1) s.bl = 1;
@@ -157,7 +178,7 @@ function cellFromProps(props: CellProps[]) {
 		else if (n === 8) {
 			const pattern = props[++i].toString();
 			s.n = { pattern };
-		} else if (n === 9) s.id = props[++i].toString();
+		} else if (n === 9) customId = props[++i].toString();
 		else if (n === 10) s.ff = props[++i].toString();
 		else if (n === 11) s.fs = Number(props[++i]);
 		else if (n === 12) s.ul = { s: 1 };
@@ -174,7 +195,7 @@ function cellFromProps(props: CellProps[]) {
 		else if (n === 20) s.tb = WrapStrategy.WRAP;
 		else if (n === 21) s.td = TextDirection.RIGHT_TO_LEFT;
 	}
-	return s;
+	return { s, customId };
 }
 
 async function renderSpreadsheet(
@@ -186,7 +207,7 @@ async function renderSpreadsheet(
 	if (!(modal instanceof HTMLElement)) throw new Error("modal not found");
 	const errorModal = setupErrorModal(modal);
 
-	const worksheet = await generateWorkSheet(data, props);
+	const { worksheet, cellIdMap } = await generateWorkSheet(data, props);
 
 	const univerAPI = await setupUniver(container);
 
@@ -211,6 +232,7 @@ async function renderSpreadsheet(
 				params as ISetRangeValuesMutationParams,
 				update_link,
 				errorModal,
+				cellIdMap,
 			);
 		}
 	});
@@ -220,6 +242,7 @@ function handleSetRangeValues(
 	params: ISetRangeValuesMutationParams,
 	update_link: string,
 	errorModal: ReturnType<typeof setupErrorModal>,
+	cellIdMap: CellIdMap,
 ) {
 	const { cellValue } = params;
 	if (!cellValue) return;
@@ -233,14 +256,10 @@ function handleSetRangeValues(
 			if (value == null && cell.p) {
 				value = cell.p.body?.dataStream?.trimEnd();
 			}
-			handleUpdate(
-				update_link,
-				Number.parseInt(col),
-				Number.parseInt(row),
-				value,
-				cell.custom || {},
-				errorModal,
-			);
+			const rowIdx = Number.parseInt(row);
+			const colIdx = Number.parseInt(col);
+			const customId = cellIdMap.get(rowIdx, colIdx);
+			handleUpdate(update_link, colIdx, rowIdx, value, customId, errorModal);
 		}
 	}
 }
