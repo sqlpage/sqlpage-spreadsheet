@@ -132,14 +132,36 @@ function setupErrorModal(resp_modal: HTMLElement) {
 	return { resp_modal, resp_modal_body, Modal };
 }
 
-async function handleUpdate(
-	update_link: string,
-	x: number,
-	y: number,
-	value: CellValue | null | undefined,
-	customId: string | undefined,
-	errorModal: ReturnType<typeof setupErrorModal>,
-) {
+interface UpdateParams {
+	update_link: string;
+	x: number;
+	y: number;
+	value: CellValue | null | undefined;
+	customId: string | undefined;
+	errorModal: ReturnType<typeof setupErrorModal>;
+}
+
+function debounce<T>(fn: (items: T[]) => Promise<void>, timeoutMs: number) {
+	let timeout: NodeJS.Timeout | null = null;
+	let items: T[] = [];
+
+	return (item: T) => {
+		if (timeout) {
+			clearTimeout(timeout);
+		}
+
+		items.push(item);
+
+		timeout = setTimeout(async () => {
+			const currentItems = items;
+			items = [];
+			await fn(currentItems);
+		}, timeoutMs);
+	};
+}
+
+const performUpdate = async (params: UpdateParams) => {
+	const { update_link, x, y, value, customId, errorModal } = params;
 	if (!update_link) return;
 
 	const url = new URL(update_link, window.location.href);
@@ -156,7 +178,17 @@ async function handleUpdate(
 		errorModal.resp_modal_body.innerHTML = resp_html;
 		new errorModal.Modal(errorModal.resp_modal).show();
 	}
+};
+
+async function processGroupedUpdates(updates: UpdateParams[]) {
+	const grouped = new Map(
+		updates.map((update) => [`${update.x}-${update.y}`, update]),
+	);
+	const uniques = Array.from(grouped.values());
+	await Promise.all(uniques.map(performUpdate));
 }
+
+const handleUpdate = debounce(processGroupedUpdates, 50);
 
 const CSS_VARS = getComputedStyle(document.documentElement);
 
@@ -259,7 +291,15 @@ function handleSetRangeValues(
 			const rowIdx = Number.parseInt(row);
 			const colIdx = Number.parseInt(col);
 			const customId = cellIdMap.get(rowIdx, colIdx);
-			handleUpdate(update_link, colIdx, rowIdx, value, customId, errorModal);
+
+			handleUpdate({
+				update_link,
+				x: colIdx,
+				y: rowIdx,
+				value,
+				customId,
+				errorModal,
+			});
 		}
 	}
 }
