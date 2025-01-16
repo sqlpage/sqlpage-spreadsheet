@@ -35,12 +35,15 @@ const DEBUG = window?.location?.search?.includes("_debug_spreadsheet");
 class CellIdMap {
 	ids: string[] = [];
 	static MAX_COLS = 1000000000;
+	static getCellIndex(row: number, col: number): number {
+		return row * CellIdMap.MAX_COLS + col;
+	}
 	insert(row: number, col: number, id: string) {
-		const idx = row * CellIdMap.MAX_COLS + col;
+		const idx = CellIdMap.getCellIndex(row, col);
 		this.ids[idx] = id;
 	}
 	get(row: number, col: number): string | undefined {
-		const idx = row * CellIdMap.MAX_COLS + col;
+		const idx = CellIdMap.getCellIndex(row, col);
 		return this.ids[idx];
 	}
 }
@@ -181,11 +184,8 @@ const performUpdate = async (params: UpdateParams) => {
 };
 
 async function processGroupedUpdates(updates: UpdateParams[]) {
-	const grouped = new Map(
-		updates.map((update) => [`${update.x}-${update.y}`, update]),
-	);
-	const uniques = Array.from(grouped.values());
-	await Promise.all(uniques.map(performUpdate));
+	deduplicate(updates, ({ x, y }) => CellIdMap.getCellIndex(y, x));
+	await Promise.all(updates.map(performUpdate));
 }
 
 const handleUpdate = debounce(processGroupedUpdates, 50);
@@ -353,3 +353,19 @@ const elem = elems[elems.length - 1];
 if (!(elem instanceof HTMLElement))
 	throw new Error("No spreadsheet elements found");
 renderSpreadsheetToElement(elem);
+
+/** Keeps only the last occurrence of each item in the array */
+function deduplicate<T, Y>(arr: T[], getKey: (item: T) => Y): void {
+	const keyPositions = new Map<Y, number>();
+	let writeAt = 0;
+
+	for (let readAt = 0; readAt < arr.length; readAt++) {
+		const item = arr[readAt];
+		const key = getKey(item);
+		const writePos = keyPositions.get(key) ?? writeAt++;
+		keyPositions.set(key, readAt);
+		arr[writePos] = item;
+	}
+
+	arr.length = writeAt;
+}
