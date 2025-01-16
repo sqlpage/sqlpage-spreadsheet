@@ -21,6 +21,9 @@ import "@univerjs/ui/lib/index.css";
 import "@univerjs/docs-ui/lib/index.css";
 import "@univerjs/sheets-ui/lib/index.css";
 import "@univerjs/sheets-formula-ui/lib/index.css";
+import type { IEventParamConfig } from "@univerjs/presets";
+import { debounce } from "./debounce";
+import { deduplicate } from "./deduplicate";
 
 const univerPresets = import("@univerjs/presets");
 const univerPresetsSheets = import("@univerjs/presets/preset-sheets-core");
@@ -144,25 +147,6 @@ interface UpdateParams {
 	errorModal: ReturnType<typeof setupErrorModal>;
 }
 
-function debounce<T>(fn: (items: T[]) => Promise<void>, timeoutMs: number) {
-	let timeout: NodeJS.Timeout | null = null;
-	let items: T[] = [];
-
-	return (item: T) => {
-		if (timeout) {
-			clearTimeout(timeout);
-		}
-
-		items.push(item);
-
-		timeout = setTimeout(async () => {
-			const currentItems = items;
-			items = [];
-			await fn(currentItems);
-		}, timeoutMs);
-	};
-}
-
 const performUpdate = async (params: UpdateParams) => {
 	const { update_link, x, y, value, customId, errorModal } = params;
 	if (!update_link) return;
@@ -254,21 +238,25 @@ async function renderSpreadsheet(
 	};
 	if (DEBUG) console.log("sqlpage-spreadsheet: creating sheet", sheet);
 
-	univerAPI.createUniverSheet(sheet);
+	univerAPI.createWorkbook(sheet);
 
 	const { update_link } = props;
-	univerAPI.onCommandExecuted(({ id, params }) => {
-		// To debug:
-		// console.log(id, params);
-		if (update_link && id === SetRangeValuesMutation.id) {
-			handleSetRangeValues(
-				params as ISetRangeValuesMutationParams,
-				update_link,
-				errorModal,
-				cellIdMap,
-			);
-		}
-	});
+	univerAPI.addEvent(
+		"CommandExecuted",
+		// @ts-ignore: https://github.com/dream-num/univer/issues/4504
+		({ id, params }: IEventParamConfig["CommandExecuted"]) => {
+			// To debug:
+			// console.log(id, params);
+			if (update_link && id === SetRangeValuesMutation.id) {
+				handleSetRangeValues(
+					params as ISetRangeValuesMutationParams,
+					update_link,
+					errorModal,
+					cellIdMap,
+				);
+			}
+		},
+	);
 }
 
 function handleSetRangeValues(
@@ -354,19 +342,3 @@ const elem = elems[elems.length - 1];
 if (!(elem instanceof HTMLElement))
 	throw new Error("No spreadsheet elements found");
 renderSpreadsheetToElement(elem);
-
-/** Keeps only the last occurrence of each item in the array */
-function deduplicate<T, Y>(arr: T[], getKey: (item: T) => Y): void {
-	const keyPositions = new Map<Y, number>();
-	let writeAt = 0;
-
-	for (let readAt = 0; readAt < arr.length; readAt++) {
-		const item = arr[readAt];
-		const key = getKey(item);
-		const keyPos = keyPositions.get(key) ?? writeAt++;
-		keyPositions.set(key, keyPos);
-		arr[keyPos] = item;
-	}
-
-	arr.length = writeAt;
-}
