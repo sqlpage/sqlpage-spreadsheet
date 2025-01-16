@@ -363,13 +363,9 @@ function deduplicate<T, Y>(arr: T[], getKey: (item: T) => Y): void {
 	for (let readAt = 0; readAt < arr.length; readAt++) {
 		const item = arr[readAt];
 		const key = getKey(item);
-		const keyPos = keyPositions.get(key);
-		if (keyPos === undefined) {
-			keyPositions.set(key, writeAt);
-			arr[writeAt++] = item;
-		} else {
-			arr[keyPos] = item;
-		}
+		const keyPos = keyPositions.get(key) ?? writeAt++;
+		keyPositions.set(key, keyPos);
+		arr[keyPos] = item;
 	}
 
 	arr.length = writeAt;
