@@ -184,6 +184,7 @@ const performUpdate = async (params: UpdateParams) => {
 };
 
 async function processGroupedUpdates(updates: UpdateParams[]) {
+	// If we have multiple updates for the same cell, we only need to perform the last one
 	deduplicate(updates, ({ x, y }) => CellIdMap.getCellIndex(y, x));
 	await Promise.all(updates.map(performUpdate));
 }
@@ -362,9 +363,13 @@ function deduplicate<T, Y>(arr: T[], getKey: (item: T) => Y): void {
 	for (let readAt = 0; readAt < arr.length; readAt++) {
 		const item = arr[readAt];
 		const key = getKey(item);
-		const writePos = keyPositions.get(key) ?? writeAt++;
-		keyPositions.set(key, readAt);
-		arr[writePos] = item;
+		const keyPos = keyPositions.get(key);
+		if (keyPos === undefined) {
+			keyPositions.set(key, writeAt);
+			arr[writeAt++] = item;
+		} else {
+			arr[keyPos] = item;
+		}
 	}
 
 	arr.length = writeAt;
