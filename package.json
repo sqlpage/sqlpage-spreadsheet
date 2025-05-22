@@ -24,7 +24,7 @@
 		"typescript": "^5.7.3"
 	},
 	"dependencies": {
-		"@univerjs/presets": "^0.6.10",
+		"@univerjs/presets": "^0.7.0",
 		"zod": "^3.24.1"
 	},
 	"@parcel/bundler-default": {
