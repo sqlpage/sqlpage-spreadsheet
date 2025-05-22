@@ -129,13 +129,22 @@ async function setupUniver(container: HTMLElement) {
 }
 
 function setupErrorModal(resp_modal: HTMLElement) {
-	if (!resp_modal) throw new Error("errorModal not found");
-	const resp_modal_body = resp_modal.querySelector(".modal-body");
-	if (!resp_modal_body) throw new Error("errorModal not found");
-	// @ts-ignore: bootstrap.is included by sqlpage
-	const Modal = window?.bootstrap?.Modal;
-	if (!Modal) throw new Error("bootstrap.Modal not found");
-	return { resp_modal, resp_modal_body, Modal };
+	const fallback = window.alert;
+	try {
+		if (!resp_modal) throw new Error("resp_modal not found");
+		const resp_modal_body = resp_modal.querySelector(".modal-body");
+		if (!resp_modal_body) throw new Error("resp_modal_body not found");
+		// @ts-ignore: bootstrap.is included by sqlpage
+		const Modal = window?.tabler?.Modal;
+		if (!Modal) throw new Error("tabler.Modal not found");
+		return (text: string) => {
+			resp_modal_body.innerHTML = text;
+			new Modal(resp_modal).show();
+		};
+	} catch (e) {
+		console.error("Error setting up error modal", e);
+		return fallback;
+	}
 }
 
 interface UpdateParams {
@@ -161,10 +170,7 @@ const performUpdate = async (params: UpdateParams) => {
 	const r = await fetch(url, { method: "POST", body: formData });
 	let resp_html = await r.text();
 	if (r.status !== 200 && !resp_html) resp_html = r.statusText;
-	if (resp_html) {
-		errorModal.resp_modal_body.innerHTML = resp_html;
-		new errorModal.Modal(errorModal.resp_modal).show();
-	}
+	if (resp_html) errorModal(resp_html);
 };
 
 async function processGroupedUpdates(updates: UpdateParams[]) {

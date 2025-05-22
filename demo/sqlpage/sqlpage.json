@@ -1,3 +1,4 @@
 {
-	"database_url": "sqlite://./sqlpage/sqlpage.db?mode=rwc"
+	"database_url": "sqlite://./sqlpage/sqlpage.db?mode=rwc",
+	"content_security_policy": "script-src 'self' 'nonce-{NONCE}' 'unsafe-eval'"
 }
