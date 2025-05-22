@@ -30,7 +30,7 @@ const univerPresetsSheets = import("@univerjs/presets/preset-sheets-core");
 const univerPresetsSheetsLocale = import(
 	"@univerjs/presets/preset-sheets-core/locales/en-US"
 );
-const zod = import("zod");
+const zod = import("zod/v4-mini");
 
 const NUMBER_CELL_TYPE: typeof CellValueType.NUMBER = 2;
 const DEBUG = window?.location?.search?.includes("_debug_spreadsheet");
@@ -299,33 +299,35 @@ function handleSetRangeValues(
 	}
 }
 
-type Zod = typeof import("zod");
+import type * as ZodNS from "zod/v4-mini";
+type Zod = typeof ZodNS.z;
 
 const PropsSchema = (z: Zod) =>
 	z.object({
-		update_link: z.string().optional(),
-		sheet_name: z.string().default("SQLPage Data"),
-		freeze_x: z.number().int().nonnegative().default(0),
-		freeze_y: z.number().int().nonnegative().default(0),
-		column_width: z.number().int().nonnegative().optional(),
-		row_height: z.number().int().nonnegative().optional(),
-		show_grid: z.boolean().default(true),
+		update_link: z.optional(z.string()),
+		sheet_name: z._default(z.string(), "SQLPage Data"),
+		freeze_x: z._default(z.number().check(z.int(), z.nonnegative()), 0),
+		freeze_y: z._default(z.number().check(z.int(), z.nonnegative()), 0),
+		column_width: z._default(z.number().check(z.int(), z.nonnegative()), 100),
+		row_height: z._default(z.number().check(z.int(), z.nonnegative()), 20),
+		show_grid: z._default(z.boolean(), true),
 	});
 
-type Props = Zod.infer<ReturnType<typeof PropsSchema>>;
+type Props = ZodNS.infer<ReturnType<typeof PropsSchema>>;
 
 const CellPropsSchema = (z: Zod) => z.union([z.string(), z.number()]);
 
 const DataArraySchema = (z: Zod) =>
-	z
-		.tuple([
-			z.number().int().nonnegative(),
-			z.number().int().nonnegative(),
+	z.tuple(
+		[
+			z.number().check(z.int(), z.nonnegative()),
+			z.number().check(z.int(), z.nonnegative()),
 			z.union([z.string(), z.number(), z.null()]),
-		])
-		.rest(CellPropsSchema(z));
+		],
+		CellPropsSchema(z),
+	);
 
-type CellProps = Zod.infer<ReturnType<typeof CellPropsSchema>>;
+type CellProps = ZodNS.infer<ReturnType<typeof CellPropsSchema>>;
 
 export async function renderSpreadsheetToElement(element: HTMLElement) {
 	try {
