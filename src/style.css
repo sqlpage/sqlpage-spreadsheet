@@ -4,3 +4,13 @@
 		margin: 0 -2rem;
 	}
 }
+
+.sqlpage_spreadsheet a:hover,
+[data-radix-popper-content-wrapper] a:hover {
+	color: unset;
+	text-decoration: none;
+}
+
+.univer-text-white {
+	color: var(--univer-white) !important;
+}
